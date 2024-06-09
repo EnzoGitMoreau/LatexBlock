@@ -1,0 +1,96 @@
+<div class="editor-container-latex">
+<div class="handle latex-handle"></div>
+@if(_TextView)
+{
+	<textarea @bind="_WrittenLatex"></textarea>
+	<button @onclick="SwitchView">Validate</button>
+}
+else 
+{
+	<div @ondblclick="SwitchView">@((MarkupString)_SvgString)</div>
+}
+</div>
+<style>
+
+	.editor-container-latex
+	{
+		width:100%;
+		height:100%;
+		display: flex;
+		flex-direction: column;
+	}
+	svg
+	{
+		width:100%;
+		height:90%;
+	}
+	textarea
+	{
+		width: 100%;
+		height: 90%;
+	}
+	.latex-handle
+	{
+		width:100%;
+		height:5%;
+		display:inline-block;	
+		background-color: blue;
+	}
+	button
+	{
+		width:100%;
+		height:5%;
+	}
+
+</style>
+
+@code
+{
+	[Parameter]
+	public PdfLatex latexEngine{get;set;}
+	
+	[Parameter]
+	public int ident {get;set;}
+	
+	
+
+	[Parameter]
+	public bool _TextView{get;set;} = true;
+	[Parameter]
+	public string _SvgString{get;set;} = "";
+	[Parameter]
+	public string _WrittenLatex{get;set;}= @"\begin{document}
+		Hello, world!
+		\end{document}";
+
+	[Parameter]
+    public EventCallback<(string writtenLatex, string svgString, bool textView, int id)>OnUpdate{get;set;}
+		
+	public async Task SwitchView()
+	{
+		if(_TextView == true)
+		{
+		latexEngine.SetMode("inline");
+		latexEngine.SetLatexContent(_WrittenLatex);
+		await latexEngine.LoadAndCompile();
+		_SvgString= latexEngine.GetSvg();
+		_TextView = false;
+
+		await OnUpdate.InvokeAsync((_WrittenLatex, _SvgString, _TextView, ident));
+
+	
+		
+		
+	
+	
+		}
+		else 
+		{
+			_TextView = true;
+			await OnUpdate.InvokeAsync((_WrittenLatex, _SvgString, _TextView, ident));
+			
+			
+		}
+	}
+
+}

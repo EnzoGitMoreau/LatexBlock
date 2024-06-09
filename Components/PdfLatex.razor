@@ -1,0 +1,98 @@
+@page "/latex"
+@inject IJSRuntime jsRunTime;
+<script src="./SwiftLaTeX-master/pdftex.wasm/PdfTeXEngine.js" @onload="EngineLoaded"></script>
+<style>
+	#pdf-result
+	{
+		width:1000px;
+		height:1000px;
+		background-color: red;
+	}
+	textarea{
+		width:100%;
+		height:20%;
+	}
+</style>
+
+
+
+
+@code{
+
+	IJSObjectReference	module;
+	string latexContent ="";
+	private string mode = "inline";
+	string svgString = "";
+	bool isEngineLoaded = false;
+	protected override async Task OnAfterRenderAsync(bool firstrender)
+	{
+	}
+	public async Task EngineLoaded()
+    {
+      
+        isEngineLoaded = true;
+		await InitEngine();
+    }
+	public async Task InitEngine()
+	{
+		module = await jsRunTime.InvokeAsync<IJSObjectReference>("import", "./setup.js");
+		await module.InvokeVoidAsync("init");
+		isEngineLoaded = true;
+		
+	}
+	public async Task LoadFile()
+	{
+		if(isEngineLoaded)
+		{
+		await module.InvokeVoidAsync("loadFileToEngine",latexContent);
+		}
+		else
+		{
+			await InitEngine();
+			await LoadFile();
+		}
+		
+	}
+	public async Task CompileLatex()	
+	{
+		byte[] data = await module.InvokeAsync<byte[]>("CompileLatex");
+		MemoryStream memoryStream = new MemoryStream();
+        memoryStream.Write(data, 0, data.Length);
+        memoryStream.Position = 0;
+		var doc = PdfToSvg.PdfDocument.Open(memoryStream);//Handle Multi-page here
+		foreach (var page in doc.Pages)
+		{
+			svgString = page.ToSvgString();	
+		}
+	}	
+
+	public async Task LoadAndCompile()
+	{
+		await LoadFile();
+		await CompileLatex();
+	}
+	public void SetLatexContent(string writtenLatex)
+	{
+		if(mode =="inline")
+		{
+		latexContent = @"\documentclass[varwidth]{standalone}"+writtenLatex;
+		}
+		else 
+		{
+			latexContent = writtenLatex;
+		}
+	}
+
+	public string GetSvg()
+	{
+		return svgString;
+	}
+
+	public void SetMode(string desiredMode)
+	{
+		if(desiredMode == "inline")
+		{
+			mode = "inline";
+		}
+	}
+}
